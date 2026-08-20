@@ -26,6 +26,12 @@ function Dashboard() {
     // Stores the price BEFORE the latest manual price check
     const [previousPrices, setPreviousPrices] = useState({});
 
+    // Stores the product ID waiting for delete confirmation
+    const [deleteId, setDeleteId] = useState(null);
+
+    // Prevents multiple delete clicks while deleting
+    const [deleting, setDeleting] = useState(false);
+
 
     // ======================================================
     // LOAD PRODUCTS
@@ -39,12 +45,9 @@ function Dashboard() {
 
             setError("");
 
-            const response =
-                await getProducts();
+            const response = await getProducts();
 
-            setProducts(
-                response.products || []
-            );
+            setProducts(response.products || []);
 
         }
         catch (err) {
@@ -78,34 +81,45 @@ function Dashboard() {
 
 
     // ======================================================
-    // DELETE PRODUCT
+    // OPEN DELETE CONFIRMATION
     // ======================================================
 
-    const handleDelete = async (id) => {
+    const handleDelete = (id) => {
 
-        const confirmed =
-            window.confirm(
-                "Are you sure you want to delete this product?"
-            );
+        setDeleteId(id);
+
+    };
 
 
-        if (!confirmed) {
+    // ======================================================
+    // CONFIRM DELETE PRODUCT
+    // ======================================================
+
+    const confirmDelete = async () => {
+
+        if (!deleteId) {
 
             return;
 
         }
 
-
         try {
 
-            await deleteProduct(id);
+            setDeleting(true);
+
+            setError("");
+
+            await deleteProduct(deleteId);
 
             setSuccess(
                 "Product deleted successfully."
             );
 
-            loadProducts();
+            // Close modal
+            setDeleteId(null);
 
+            // Reload products
+            await loadProducts();
 
             setTimeout(() => {
 
@@ -116,10 +130,20 @@ function Dashboard() {
         }
         catch (err) {
 
+            console.error(
+                "Delete product error:",
+                err
+            );
+
             setError(
                 err.response?.data?.message ||
                 "Unable to delete product."
             );
+
+        }
+        finally {
+
+            setDeleting(false);
 
         }
 
@@ -132,189 +156,189 @@ function Dashboard() {
 
     const handleCheckPrice = async (id) => {
 
-    // ======================================================
-    // FIND PRODUCT BEFORE CHECKING
-    // ======================================================
-
-    const existingProduct =
-        products.find(
-            product => product._id === id
-        );
-
-
-    if (!existingProduct) {
-
-        setError(
-            "Product not found."
-        );
-
-        return;
-
-    }
-
-
-    // ======================================================
-    // SAVE OLD PRICE LOCALLY
-    // ======================================================
-
-    const oldPrice =
-        Number(existingProduct.currentPrice);
-
-
-    try {
-
         // ==================================================
-        // START CHECKING
+        // FIND PRODUCT BEFORE CHECKING
         // ==================================================
 
-        setCheckingPrice(id);
-
-        setError("");
-
-        setSuccess("");
-
-
-        console.log(
-            "========================================"
-        );
-
-        console.log(
-            "MANUAL PRICE CHECK"
-        );
-
-        console.log(
-            "Product:",
-            existingProduct.title
-        );
-
-        console.log(
-            "Old price:",
-            oldPrice
-        );
-
-        console.log(
-            "Checking latest price..."
-        );
-
-
-        // ==================================================
-        // CALL BACKEND
-        // ==================================================
-
-        const response =
-            await checkProductPriceNow(id);
-
-
-        console.log(
-            "Price check response:",
-            response
-        );
-
-
-        // ==================================================
-        // UPDATE PRODUCT
-        // ==================================================
-
-        if (response.product) {
-
-            const newProduct =
-                response.product;
-
-
-            const newPrice =
-                Number(newProduct.currentPrice);
-
-
-            const priceDifference =
-                newPrice - oldPrice;
-
-
-            console.log(
-                "New price:",
-                newPrice
+        const existingProduct =
+            products.find(
+                product => product._id === id
             );
 
 
-            console.log(
-                "Price difference:",
-                priceDifference
+        if (!existingProduct) {
+
+            setError(
+                "Product not found."
             );
 
-
-            // ==============================================
-            // UPDATE PRODUCT WITH NEW PRICE
-            // ==============================================
-
-            setProducts(prevProducts =>
-
-                prevProducts.map(product =>
-
-                    product._id === id
-                        ? newProduct
-                        : product
-
-                )
-
-            );
-
-
-            // ==============================================
-            // SAVE OLD PRICE ONLY AFTER API COMPLETES
-            // ==============================================
-
-            setPreviousPrices(prev => ({
-
-                ...prev,
-
-                [id]: oldPrice
-
-            }));
+            return;
 
         }
 
 
         // ==================================================
-        // SUCCESS MESSAGE
+        // SAVE OLD PRICE LOCALLY
         // ==================================================
 
-        setSuccess(
-            response.message ||
-            "Price checked successfully."
-        );
+        const oldPrice =
+            Number(existingProduct.currentPrice);
 
 
-        setTimeout(() => {
+        try {
+
+            // ==================================================
+            // START CHECKING
+            // ==================================================
+
+            setCheckingPrice(id);
+
+            setError("");
 
             setSuccess("");
 
-        }, 3000);
 
-    }
-    catch (err) {
+            console.log(
+                "========================================"
+            );
 
-        console.error(
-            "Manual price check error:",
-            err
-        );
+            console.log(
+                "MANUAL PRICE CHECK"
+            );
+
+            console.log(
+                "Product:",
+                existingProduct.title
+            );
+
+            console.log(
+                "Old price:",
+                oldPrice
+            );
+
+            console.log(
+                "Checking latest price..."
+            );
 
 
-        setError(
-            err.response?.data?.message ||
-            "Unable to check product price right now."
-        );
+            // ==================================================
+            // CALL BACKEND
+            // ==================================================
 
-    }
-    finally {
+            const response =
+                await checkProductPriceNow(id);
 
-        // ==================================================
-        // STOP SPINNER ONLY AFTER API COMPLETES
-        // ==================================================
 
-        setCheckingPrice(null);
+            console.log(
+                "Price check response:",
+                response
+            );
 
-    }
 
-};
+            // ==================================================
+            // UPDATE PRODUCT
+            // ==================================================
+
+            if (response.product) {
+
+                const newProduct =
+                    response.product;
+
+
+                const newPrice =
+                    Number(newProduct.currentPrice);
+
+
+                const priceDifference =
+                    newPrice - oldPrice;
+
+
+                console.log(
+                    "New price:",
+                    newPrice
+                );
+
+
+                console.log(
+                    "Price difference:",
+                    priceDifference
+                );
+
+
+                // ==============================================
+                // UPDATE PRODUCT WITH NEW PRICE
+                // ==============================================
+
+                setProducts(prevProducts =>
+
+                    prevProducts.map(product =>
+
+                        product._id === id
+                            ? newProduct
+                            : product
+
+                    )
+
+                );
+
+
+                // ==============================================
+                // SAVE OLD PRICE ONLY AFTER API COMPLETES
+                // ==============================================
+
+                setPreviousPrices(prev => ({
+
+                    ...prev,
+
+                    [id]: oldPrice
+
+                }));
+
+            }
+
+
+            // ==================================================
+            // SUCCESS MESSAGE
+            // ==================================================
+
+            setSuccess(
+                response.message ||
+                "Price checked successfully."
+            );
+
+
+            setTimeout(() => {
+
+                setSuccess("");
+
+            }, 3000);
+
+        }
+        catch (err) {
+
+            console.error(
+                "Manual price check error:",
+                err
+            );
+
+
+            setError(
+                err.response?.data?.message ||
+                "Unable to check product price right now."
+            );
+
+        }
+        finally {
+
+            // ==================================================
+            // STOP SPINNER ONLY AFTER API COMPLETES
+            // ==================================================
+
+            setCheckingPrice(null);
+
+        }
+
+    };
 
 
     // ======================================================
@@ -920,6 +944,279 @@ function Dashboard() {
                 )}
 
             </main>
+
+
+            {/* ======================================================
+                DELETE CONFIRMATION MODAL
+            ====================================================== */}
+
+            {deleteId && (
+
+                <div
+                    className="
+                        fixed
+                        inset-0
+                        z-50
+                        flex
+                        items-center
+                        justify-center
+                        bg-slate-950/60
+                        backdrop-blur-sm
+                        px-4
+                    "
+                    onClick={() => {
+                        if (!deleting) {
+                            setDeleteId(null);
+                        }
+                    }}
+                >
+
+                    <div
+                        className="
+                            w-full
+                            max-w-md
+                            overflow-hidden
+                            rounded-3xl
+                            bg-white
+                            shadow-2xl
+                            border
+                            border-white/20
+                        "
+                        onClick={(e) => e.stopPropagation()}
+                    >
+
+                        {/* Modal Header */}
+
+                        <div
+                            className="
+                                px-6
+                                pt-6
+                                pb-4
+                            "
+                        >
+
+                            <div
+                                className="
+                                    flex
+                                    items-start
+                                    gap-4
+                                "
+                            >
+
+                                <div
+                                    className="
+                                        flex
+                                        h-12
+                                        w-12
+                                        shrink-0
+                                        items-center
+                                        justify-center
+                                        rounded-2xl
+                                        bg-red-100
+                                        text-2xl
+                                    "
+                                >
+                                    🗑️
+                                </div>
+
+
+                                <div className="flex-1">
+
+                                    <h2
+                                        className="
+                                            text-xl
+                                            font-bold
+                                            text-slate-900
+                                        "
+                                    >
+                                        Delete Product?
+                                    </h2>
+
+
+                                    <p
+                                        className="
+                                            mt-1
+                                            text-sm
+                                            text-slate-500
+                                        "
+                                    >
+                                        This action cannot be undone.
+                                    </p>
+
+                                </div>
+
+
+                                <button
+                                    type="button"
+                                    disabled={deleting}
+                                    onClick={() =>
+                                        setDeleteId(null)
+                                    }
+                                    className="
+                                        rounded-lg
+                                        p-2
+                                        text-slate-400
+                                        hover:bg-slate-100
+                                        hover:text-slate-600
+                                        transition
+                                        disabled:opacity-40
+                                    "
+                                    aria-label="Close"
+                                >
+                                    ✕
+                                </button>
+
+                            </div>
+
+                        </div>
+
+
+                        {/* Modal Content */}
+
+                        <div
+                            className="
+                                px-6
+                                pb-6
+                            "
+                        >
+
+                            <div
+                                className="
+                                    rounded-2xl
+                                    bg-red-50
+                                    border
+                                    border-red-100
+                                    px-4
+                                    py-4
+                                "
+                            >
+
+                                <p
+                                    className="
+                                        text-sm
+                                        leading-6
+                                        text-red-800
+                                    "
+                                >
+                                    Are you sure you want to delete this
+                                    product? Your product will be removed
+                                    from your dashboard.
+                                </p>
+
+                            </div>
+
+                        </div>
+
+
+                        {/* Modal Buttons */}
+
+                        <div
+                            className="
+                                flex
+                                flex-col-reverse
+                                sm:flex-row
+                                sm:justify-end
+                                gap-3
+                                bg-slate-50
+                                border-t
+                                border-slate-100
+                                px-6
+                                py-4
+                            "
+                        >
+
+                            <button
+                                type="button"
+                                disabled={deleting}
+                                onClick={() =>
+                                    setDeleteId(null)
+                                }
+                                className="
+                                    w-full
+                                    sm:w-auto
+                                    rounded-xl
+                                    border
+                                    border-slate-300
+                                    bg-white
+                                    px-5
+                                    py-3
+                                    text-sm
+                                    font-semibold
+                                    text-slate-700
+                                    hover:bg-slate-100
+                                    transition
+                                    disabled:cursor-not-allowed
+                                    disabled:opacity-50
+                                "
+                            >
+                                Cancel
+                            </button>
+
+
+                            <button
+                                type="button"
+                                disabled={deleting}
+                                onClick={confirmDelete}
+                                className="
+                                    w-full
+                                    sm:w-auto
+                                    rounded-xl
+                                    bg-red-600
+                                    px-5
+                                    py-3
+                                    text-sm
+                                    font-semibold
+                                    text-white
+                                    shadow-sm
+                                    hover:bg-red-700
+                                    hover:shadow-md
+                                    transition
+                                    disabled:cursor-not-allowed
+                                    disabled:opacity-60
+                                    flex
+                                    items-center
+                                    justify-center
+                                    gap-2
+                                "
+                            >
+
+                                {deleting ? (
+
+                                    <>
+
+                                        <span
+                                            className="
+                                                h-4
+                                                w-4
+                                                rounded-full
+                                                border-2
+                                                border-white
+                                                border-t-transparent
+                                                animate-spin
+                                            "
+                                        />
+
+                                        Deleting...
+
+                                    </>
+
+                                ) : (
+
+                                    <>
+                                        🗑️ Delete Product
+                                    </>
+
+                                )}
+
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            )}
 
         </div>
 

@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 
+
 function ProductCard({
     product,
     onDelete,
@@ -342,6 +343,7 @@ function ProductCard({
                                 font-semibold
                             "
                         >
+
                             <span>
                                 📧
                             </span>
@@ -396,6 +398,7 @@ function ProductCard({
                                 font-semibold
                             "
                         >
+
                             <span>
                                 🔔
                             </span>
@@ -458,8 +461,6 @@ function ProductCard({
                 {checkingPrice ? (
 
                     <>
-
-                        {/* Spinner */}
 
                         <span
                             className="
@@ -528,6 +529,7 @@ function ProductCard({
                 {/* Delete */}
 
                 <button
+                    type="button"
                     onClick={() =>
                         onDelete(product._id)
                     }
@@ -539,10 +541,12 @@ function ProductCard({
                         text-red-600
                         font-semibold
                         hover:bg-red-100
+                        hover:shadow-sm
                         transition
+                        duration-200
                     "
                 >
-                    Delete
+                    🗑️ Delete
                 </button>
 
             </div>
@@ -602,5 +606,6 @@ function ProductCard({
     );
 
 }
+
 
 export default ProductCard;
